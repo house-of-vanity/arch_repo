@@ -34,7 +34,7 @@ jobs:
         tree
     - name: Perform actions
       run: |
-        repo-add ${{ env.REPO_BD_NAME }}.db.tar.gz *.zst  -s
+        bash -c "cd x86_64; repo-add ${{ env.REPO_BD_NAME }}.db.tar.gz *.zst"
     - name: Commit and push
       run: |
         git config --local user.email "repo_master@github.com"
