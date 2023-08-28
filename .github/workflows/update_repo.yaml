@@ -23,7 +23,7 @@ jobs:
       uses: actions/checkout@v2
     - name: Install jq
       run: |
-        sudo apt install -y jq
+        pacman -S --noconfirm jq
     - name: Download artifacts
       run: |
         REPO_NAME=$(echo "${{ matrix.repo }}" | cut -d '/' -f1)
