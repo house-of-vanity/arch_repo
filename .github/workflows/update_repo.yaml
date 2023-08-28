@@ -27,11 +27,10 @@ jobs:
         pacman -S --noconfirm jq
     - name: Download artifacts
       run: |
-        echo "REPO_NAME=$(echo ${{ matrix.repo }} | cut -d '/' -f1)" >> $REPO_NAME
-        echo "ARTIFACT_NAME=$(echo ${{ matrix.repo }} | cut -d'/' -f2)" >> $ARTIFACT_NAME
+        echo "REPO_NAME=$(echo ${{ matrix.repo }} | cut -d '/' -f1)" >> $GITHUB_ENV
+        echo "ARTIFACT_NAME=$(echo ${{ matrix.repo }} | cut -d'/' -f2)" >> $GITHUB_ENV
         echo "ARTIFACT_ID=$(curl -H "Authorization: token ${{ secrets.PERSONAL_TOKEN }}" https://api.github.com/repos/$REPO_NAME/actions/artifacts | jq '.artifacts[] | select(.name=="${ARTIFACT_NAME}") | .id')"
         curl -L -o x86_64/${ARTIFACT_NAME}.zip -H "Authorization: token ${{ secrets.PERSONAL_TOKEN }}" https://api.github.com/repos/${REPO_NAME}/actions/artifacts/${ARTIFACT_ID}/zip
-
     - name: Perform actions
       run: |
         repo-add ${REPO_BD_NAME}.db.tar.gz *.zst  -s
