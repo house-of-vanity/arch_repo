@@ -34,7 +34,7 @@ jobs:
 
     - name: Perform actions
       run: |
-        repo-add ${{ REPO_BD_NAME }}.db.tar.gz *.zst  -s
+        repo-add ${REPO_BD_NAME}.db.tar.gz *.zst  -s
     - name: Commit and push
       run: |
         git config --local user.email "repo_master@github.com"
