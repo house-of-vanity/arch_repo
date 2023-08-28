@@ -24,14 +24,13 @@ jobs:
     - name: Install jq
       run: |
         pacman -Sy
-        pacman -S --noconfirm jq tree
+        pacman -S --noconfirm jq git
     - name: Download artifacts
       run: |
         echo "REPO_NAME=$(echo ${{ matrix.repo }} | cut -d '/' -f1)" >> $GITHUB_ENV
         echo "ARTIFACT_NAME=$(echo ${{ matrix.repo }} | cut -d'/' -f2)" >> $GITHUB_ENV
         echo "ARTIFACT_ID=$(curl -H "Authorization: token ${{ secrets.PERSONAL_TOKEN }}" https://api.github.com/repos/$REPO_NAME/actions/artifacts | jq '.artifacts[] | select(.name=="${ARTIFACT_NAME}") | .id')"
         curl -L -o x86_64/${ARTIFACT_NAME}.zip -H "Authorization: token ${{ secrets.PERSONAL_TOKEN }}" https://api.github.com/repos/${REPO_NAME}/actions/artifacts/${ARTIFACT_ID}/zip
-        tree
     - name: Perform actions
       run: |
         bash -c "cd x86_64; repo-add ${{ env.REPO_BD_NAME }}.db.tar.gz *.zst"
