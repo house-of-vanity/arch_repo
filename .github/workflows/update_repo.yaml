@@ -21,6 +21,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
+    - name: Install jq
+      run: |
+        sudo apt install -y jq
     - name: Download artifacts
       run: |
         REPO_NAME=$(echo "${{ matrix.repo }}" | cut -d '/' -f1)
