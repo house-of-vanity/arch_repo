@@ -21,7 +21,7 @@ jobs:
       uses: actions/checkout@v2
     - name: Install jq
       run: |
-        pacman -Syu
+        pacman -Syu --noconfirm
         pacman -S --noconfirm jq git
     - name: Download artifacts
       run: |
