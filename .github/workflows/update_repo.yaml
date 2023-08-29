@@ -21,12 +21,12 @@ jobs:
       uses: actions/checkout@v2
     - name: Install deps
       run: |
-        pacman -Sy --noconfirm jq git
+        pacman -Suy --noconfirm jq git
     - name: Set env vars
       run: |
         echo "REPO_OWNER=$(echo ${{ matrix.repo }} | cut -d '/' -f1)" >> $GITHUB_ENV
         echo "ARTIFACT_NAME=$(echo ${{ matrix.repo }} | cut -d'/' -f2)" >> $GITHUB_ENV
-        echo 'ARTIFACT_ID=$(curl -H "Authorization: token ${{ secrets.PERSONAL_TOKEN }}" https://api.github.com/repos/${{ env.REPO_OWNER }}/actions/artifacts | jq ".artifacts[] | select(.name==${{ env.ARTIFACT_NAME }}) | .id")'
+        echo "ARTIFACT_ID=$(curl -H 'Authorization: token ${{ secrets.PERSONAL_TOKEN }}' https://api.github.com/repos/${{ env.REPO_OWNER }}/actions/artifacts | jq '.artifacts[] | select(.name==${{ env.ARTIFACT_NAME }}) | .id')"
     - name: Download artifacts
       run: |
         curl -L -o x86_64/${{ env.ARTIFACT_NAME }}.zip -H "Authorization: token ${{ secrets.PERSONAL_TOKEN }}" https://api.github.com/repos/${{ env.REPO_OWNER }}/actions/artifacts/${{ env.ARTIFACT_ID }}/zip
