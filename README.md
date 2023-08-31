@@ -1,15 +1,22 @@
 # arch_repo
 
-Change me.hexor.ru to your host name.
+It's Arch Linux repository for my own packages.
 
-Copy *.zst* package to `x86_64` and run `repo-add  me.hexor.ru.db.tar.gz *.zst  -s` for updating DB and signing GPG.
+
+# Run you own
+
+Using *GitHub Pages* for hosting is nice. Just enable it in repo settings and optionally set up your own domain. 
+
+==Change btwiusearch.net to your host name==
+
+Copy *.zst* package to `x86_64` and run `repo-add  btwiusearch.net.db.tar.gz *.zst  -s` for updating DB and signing GPG.
 
 Commit to repo and enable gitlab pages to main branch.
 
 Enable new repo `/etc/pacman.conf`
 
 ```ini
-[me.hexor.ru]
+[btwiusearch.net]
 SigLevel = Optional TrustAll
-Server = https://me.hexor.ru/arch_repo/x86_64/
+Server = https://btwiusearch.net/arch_repo/x86_64/
 ```
