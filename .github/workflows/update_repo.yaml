@@ -38,6 +38,7 @@ jobs:
       with:
         name: ${{ matrix.repo }}-packages
         path: ${{ fromJson(steps.download.outputs.downloaded_files)[0] }}
+        if-no-files-found: ignore
   update:
     runs-on: ubuntu-latest
     needs:
