@@ -1,9 +1,9 @@
 name: Download Artifact and Commit
 env:
-  REPO_BD_NAME: me.hexor.ru
+  REPO_NAME: btwiusearch.net
 on:
-  repository_dispatch:
-    types: [new_artifact]
+# repository_dispatch:
+#   types: [new_artifact]
   push:
     branches:
       - main
@@ -11,34 +11,35 @@ on:
 jobs:
   download-and-commit:
     runs-on: ubuntu-latest
-    container:
-      image: archlinux
     strategy:
       matrix:
-        repo: ['house-of-vanity/rexec_x86_64-linux-musl']
+        repo: ['house-of-vanity/rexec']
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Install deps
-      run: |
-        pacman -Suy --noconfirm jq git
-    - name: Set env vars
-      run: |
-        echo "REPO_OWNER=$(echo ${{ matrix.repo }} | cut -d '/' -f1)" >> $GITHUB_ENV
-        echo "ARTIFACT_NAME=$(echo ${{ matrix.repo }} | cut -d'/' -f2)" >> $GITHUB_ENV
-        echo "ARTIFACT_ID=$(curl -H 'Authorization: token ${{ secrets.PERSONAL_TOKEN }}' https://api.github.com/repos/${{ env.REPO_OWNER }}/actions/artifacts | jq '.artifacts[] | select(.name==${{ env.ARTIFACT_NAME }}) | .id')"
-    - name: Download artifacts
-      run: |
-        curl -L -o x86_64/${{ env.ARTIFACT_NAME }}.zip -H "Authorization: token ${{ secrets.PERSONAL_TOKEN }}" https://api.github.com/repos/${{ env.REPO_OWNER }}/actions/artifacts/${{ env.ARTIFACT_ID }}/zip
+      uses: actions/checkout@v3
+    - uses: robinraju/release-downloader@v1.8
+      with:
+        repository: ${{ matrix.repo }}
+        latest: true
+        fileName: "*.zst"
+#   - name: Set env vars
+#     run: |
+#       echo "REPO_OWNER=$(echo ${{ matrix.repo }} | cut -d '/' -f1)" >> $GITHUB_ENV
+#       echo "ARTIFACT_NAME=$(echo ${{ matrix.repo }} | cut -d'/' -f2)" >> $GITHUB_ENV
+#       echo "ARTIFACT_ID=$(curl -H 'Authorization: token ${{ secrets.PERSONAL_TOKEN }}' https://api.github.com/repos/${{ env.REPO_OWNER }}/actions/artifacts | jq '.artifacts[] | select(.name==${{ env.ARTIFACT_NAME }}) | .id')"
+#   - name: Download artifacts
+#     run: |
+#       curl -L -o x86_64/${{ env.ARTIFACT_NAME }}.zip -H "Authorization: token ${{ secrets.PERSONAL_TOKEN }}" https://api.github.com/repos/${{ env.REPO_OWNER }}/actions/artifacts/${{ env.ARTIFACT_ID }}/zip
     - name: Perform actions
       run: |
+        ls -lah
         cd x86_64
         repo-add ${{ env.REPO_BD_NAME }}.db.tar.gz *.zst
-    - name: Commit and push
-      run: |
-        git config --local user.email "repo_master@github.com"
-        git config --local user.name "GitHub Action"
-        git add -A
-        git commit -m "Update from artifact"
-        git push
+#   - name: Commit and push
+#     run: |
+#       git config --local user.email "repo_master@github.com"
+#       git config --local user.name "GitHub Action"
+#       git add -A
+#       git commit -m "Update from artifact"
+#       git push
 
