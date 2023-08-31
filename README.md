@@ -3,7 +3,7 @@
 It's Arch Linux repository for my own packages.
 ---
 
-[x86_64 list](arch_repo/x86_64/)
+[x86_64 list](x86_64/)
 
 # Run you own
 
