@@ -32,7 +32,7 @@ jobs:
 #   - name: Get pkg name
 #     run: echo "VERSION=$(grep -P '^version = \"\d+\.\d+\.\d+\"' Cargo.toml | awk -F '\"' '{print $2}')" >> $GITHUB_ENV
     - name: Get name
-      run: echo "PKG_NAME=$(${{ matrix.repo }} | awk -F '/' '{print $NF}')" >> $GITHUB_ENV
+      run: echo "PKG_NAME=$(echo ${{ matrix.repo }} | awk -F '/' '{print $NF}')" >> $GITHUB_ENV
     - uses: actions/upload-artifact@v3.1.2
       name: Upload artifact
       with:
