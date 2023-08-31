@@ -29,14 +29,14 @@ jobs:
         repository: ${{ matrix.repo }}
         latest: true
         fileName: "*.zst"
-#   - name: Get p
+#   - name: Get pkg name
 #     run: echo "VERSION=$(grep -P '^version = \"\d+\.\d+\.\d+\"' Cargo.toml | awk -F '\"' '{print $2}')" >> $GITHUB_ENV
-#   - name: Get name
-#     run: echo "PKG_NAME=$(fromJson(steps.download.outputs.downloaded_files)[0] | awk -F '/' '{print $NF}')" >> $GITHUB_ENV
+    - name: Get name
+      run: echo "PKG_NAME=$(${{ matrix.repo }} | awk -F '/' '{print $NF}')" >> $GITHUB_ENV
     - uses: actions/upload-artifact@v3.1.2
       name: Upload artifact
       with:
-        name: ${{ matrix.repo }}-packages
+        name: ${{ env.PKG_NAME }}
         path: ${{ fromJson(steps.download.outputs.downloaded_files)[0] }}
         if-no-files-found: ignore
   update:
