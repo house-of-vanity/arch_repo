@@ -31,10 +31,12 @@ jobs:
         fileName: "*.zst"
 #   - name: Get p
 #     run: echo "VERSION=$(grep -P '^version = \"\d+\.\d+\.\d+\"' Cargo.toml | awk -F '\"' '{print $2}')" >> $GITHUB_ENV
+#   - name: Get name
+#     run: echo "PKG_NAME=$(fromJson(steps.download.outputs.downloaded_files)[0] | awk -F '/' '{print $NF}')" >> $GITHUB_ENV
     - uses: actions/upload-artifact@v3.1.2
       name: Upload artifact
       with:
-        name: ${{ fromJson(steps.download.outputs.downloaded_files)[0] }}
+        name: ${{ matrix.repo }}-packages
         path: ${{ fromJson(steps.download.outputs.downloaded_files)[0] }}
   update:
     runs-on: ubuntu-latest
