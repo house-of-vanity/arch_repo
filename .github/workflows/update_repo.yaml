@@ -44,11 +44,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          ref: repo
       - name: Update database
         run: |
-          ls -lah ../
+          ls -lah .
       - uses: actions/download-artifact@master
         name: Download
         id: download
