@@ -56,6 +56,7 @@ jobs:
           path: pkgs/
       - name: Update database
         run: |
+          rm -rf x86_64
           mkdir -p x86_64
           mv pkgs/*/*zst x86_64/
           bash update.sh x86_64
