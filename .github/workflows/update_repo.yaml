@@ -34,14 +34,12 @@ jobs:
       name: Upload artifact
       with:
         name: ${{ env.PKG_NAME }}
-#       path: ${{ fromJson(steps.download.outputs.downloaded_files)[0] }}
         path: "*.zst"
         if-no-files-found: ignore
   update:
     runs-on: ubuntu-latest
     container:
       image: archlinux:base-devel
-#     options: --user 1001
     needs:
       - download
     steps:
@@ -61,6 +59,7 @@ jobs:
           path: pkgs/
       - name: Update database
         run: |
+          mkdir -p x86_64
           mv pkgs/*/*zst x86_64/
           bash update.sh x86_64
           cd x86_64/
