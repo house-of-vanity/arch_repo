@@ -48,6 +48,7 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+          ref: repo
       - uses: actions/download-artifact@master
         name: Download
         id: download
