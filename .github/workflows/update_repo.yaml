@@ -49,9 +49,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Update database
-        run: |
-          ls -lah .
+          fetch-tags: true
       - uses: actions/download-artifact@master
         name: Download
         id: download
