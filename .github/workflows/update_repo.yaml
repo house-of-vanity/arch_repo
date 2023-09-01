@@ -14,7 +14,6 @@ jobs:
       matrix:
         repo:
           - house-of-vanity/rexec
-          - house-of-vanity/desubot
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -24,9 +23,6 @@ jobs:
         repository: ${{ matrix.repo }}
         latest: true
         fileName: "*.zst"
-    - name: Update database
-      run: |
-        ls -lah .
     - name: Get name
       run: echo "PKG_NAME=$(echo ${{ matrix.repo }} | awk -F '/' '{print $NF}')" >> $GITHUB_ENV
     - uses: actions/upload-artifact@v3.1.2
