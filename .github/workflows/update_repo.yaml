@@ -2,6 +2,8 @@ name: Download Artifact and Commit
 env:
   REPO_NAME: btwiusearch.net
 on:
+  schedule:
+    - cron: '0 0 * * *'
   push:
     branches:
       - main
