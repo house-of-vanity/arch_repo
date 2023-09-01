@@ -44,6 +44,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: repo
+      - name: Update database
+        run: |
+          ls -lah ../
       - uses: actions/download-artifact@master
         name: Download
         id: download
@@ -54,7 +59,6 @@ jobs:
           mv pkgs/*/*zst x86_64/
           cd x86_64/
           repo-add  ${{ env.REPO_NAME }}.db.tar.gz *.zst
-          ls -lah ../
       - uses: EndBug/add-and-commit@v9
         with:
           default_author: github_actions
