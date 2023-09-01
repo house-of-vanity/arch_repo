@@ -41,10 +41,12 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: archlinux:base-devel
-      options: --user 1001
+#     options: --user 1001
     needs:
       - download
     steps:
+      - name: Update git
+        run: pacman -Sy --noconfirm git
       - name: Checkout code
         uses: actions/checkout@v3
         with:
