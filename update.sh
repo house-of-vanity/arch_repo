@@ -17,11 +17,12 @@ dir_path="$1"
   echo "  </style>"
   echo "</head>"
   echo "<body>"
-  echo "  <h1>Index of $dir_path</h1>"
+  echo "  <h1>Index</h1>"
+  echo "  <h2>$dir_path</h2>"
 
   cd "$dir_path" || exit
-
-  echo "  <h2>Files</h2>"
+  
+  echo "  <h2>Base</h2>"
   echo "  <table>"
   echo "    <tr>"
   echo "      <th>Filename</th>"
@@ -40,6 +41,7 @@ dir_path="$1"
     echo "      <td>${mtime}</td>"
     echo "    </tr>"
   done
+
   echo "  </table>"
 
   echo "  <h2>Packages</h2>"
@@ -52,18 +54,19 @@ dir_path="$1"
   echo "    </tr>"
 
   for file in *.zst; do
-    packageName=$(echo "$file" | cut -d'-' -f1)
-    packageVersion=$(echo "$file" | sed -E "s/^$packageName-([^-]+)-.*/\1/")
+    package_name=$(echo "$file" | cut -d'-' -f1)
+    version=$(echo "$file" | cut -d'-' -f2- | rev | cut -c 5- | rev)
     size=$(stat -c%s "$file")
     sizeHR=$(numfmt --to=iec-i --suffix=B --format="%.2f" "$size")
     mtime=$(stat -c %y "$file" | cut -d' ' -f1)
     echo "    <tr>"
-    echo "      <td><a href=\"$file\">$packageName</a></td>"
-    echo "      <td>${packageVersion}</td>"
+    echo "      <td><a href=\"$file\">$package_name</a></td>"
+    echo "      <td>${version}</td>"
     echo "      <td>${sizeHR}</td>"
     echo "      <td>${mtime}</td>"
     echo "    </tr>"
   done
+
   echo "  </table>"
   echo "</body>"
   echo "</html>"
