@@ -46,7 +46,7 @@ jobs:
       - download
     steps:
       - name: Update git
-        run: pacman -Sy --noconfirm git
+        run: pacman -Syu --noconfirm git
       - name: Checkout code
         uses: actions/checkout@v3
         with:
