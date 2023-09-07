@@ -5,7 +5,7 @@ on:
   schedule:
     - cron: '0 0 * * *'
   repository_dispatch:
-    types: [some_event]
+    types: [new_package]
 # push:
 #   branches:
 #     - main
