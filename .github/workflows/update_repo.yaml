@@ -4,9 +4,11 @@ env:
 on:
   schedule:
     - cron: '0 0 * * *'
-  push:
-    branches:
-      - main
+  repository_dispatch:
+    types: [some_event]
+# push:
+#   branches:
+#     - main
 
 jobs:
   download:
