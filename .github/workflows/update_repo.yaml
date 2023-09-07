@@ -64,7 +64,7 @@ jobs:
           mkdir -p x86_64
           mv pkgs/*/*zst x86_64/
           cd x86_64/
-          repo-add  ${{ env.REPO_NAME }}.db.tar.gz *.zst
+          repo-add --new ${{ env.REPO_NAME }}.db.tar.gz *.zst
           cd ../
           bash update.sh x86_64
       - uses: EndBug/add-and-commit@v9
