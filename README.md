@@ -1,6 +1,6 @@
 # Private Arch Linux Repo
 
-It's Arch Linux repository for my own packages.
+It's Arch Linux repository for my own packages. Powered by GitHub Actions and Pages
 ---
 
 [x86_64 list](x86_64/)
@@ -11,7 +11,7 @@ Using *GitHub Pages* for hosting is nice. Just enable it in repo settings and op
 
 --Change btwiusearch.net to your host name--
 
-Copy *.zst* package to `x86_64` and run `repo-add  btwiusearch.net.db.tar.gz *.zst  -s` for updating DB and signing GPG.
+Copy *.zst* package to `x86_64` and run `repo-add --new btwiusearch.net.db.tar.gz *.zst  -s` for updating DB and signing GPG.
 
 Commit to repo and enable gitlab pages to main branch.
 
