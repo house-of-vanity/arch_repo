@@ -69,4 +69,3 @@ dir_path="$1"
   echo "</html>"
 
 } > "$dir_path/index.html"
-
