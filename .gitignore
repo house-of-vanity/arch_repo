@@ -1,1 +1,5 @@
 pkgs
+__pycache__/
+incoming/
+repository/
+site/

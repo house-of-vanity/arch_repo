@@ -1,85 +1,83 @@
-name: Download Artifact and Commit
-env:
-  REPO_NAME: btwiusearch.net
+name: Publish Arch repository
+
 on:
   schedule:
     - cron: '0 0 * * *'
   repository_dispatch:
     types: [new_package]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'tsunagi release tag to import (empty: reconcile releases)'
+        required: false
+        type: string
   push:
-    branches:
-      - main
+    branches: [main]
+
+# Serialize the update and deployment, including the repo branch checkout.
+# Nightly reconciliation recovers events superseded while pending.
+concurrency:
+  group: arch-repository
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
-  download:
-    name: Get
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        repo:
-          - house-of-vanity/rexec
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-    - uses: robinraju/release-downloader@v1.8
-      id: download
-      with:
-        repository: ${{ matrix.repo }}
-        latest: true
-        fileName: "*.zst"
-    - name: Get name
-      run: echo "PKG_NAME=$(echo ${{ matrix.repo }} | awk -F '/' '{print $NF}')" >> $GITHUB_ENV
-    - uses: actions/upload-artifact@master
-      if: fromJson(steps.download.outputs.downloaded_files)[0]
-      name: Upload artifact
-      with:
-        name: ${{ env.PKG_NAME }}
-        path: "*.zst"
-        if-no-files-found: ignore
   update:
     runs-on: ubuntu-latest
-    container:
-      image: archlinux:base-devel
-    needs:
-      - download
+    container: archlinux:base-devel
+    permissions:
+      contents: write
+      pages: read
     steps:
-      - name: Update git
-        run: |
-          pacman -Syu --noconfirm git
-          git config --global --add safe.directory '*'
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Install repository tooling
+        run: pacman -Syu --noconfirm git python
+      - uses: actions/checkout@v6
         with:
-          fetch-depth: 0
-          fetch-tags: true
+          persist-credentials: false
+      - name: Test repository updater
+        run: python -m unittest discover -s tests -v
+      - name: Checkout published packages
+        uses: actions/checkout@v6
+        with:
           ref: repo
-      - uses: actions/download-artifact@master
-        name: Download
-        id: download
-        with:
-          path: pkgs/
-      - name: Update database
+          path: repository
+      - name: Download release packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          SOURCE_REPOSITORY: ${{ github.event.client_payload.repository }}
+          RELEASE_TAG: ${{ github.event.client_payload.tag || inputs.tag }}
+        run: python scripts/sync.py download incoming
+      - name: Update pacman databases and directory indexes
+        run: python scripts/sync.py update repository incoming
+      - name: Save packages in the repo branch
+        working-directory: repository
         run: |
-          # Create x86_64 directory if it doesn't exist
-          mkdir -p x86_64/
-          
-          # Check if any .zst files were downloaded
-          if find pkgs/ -name "*.zst" -type f | head -1 | grep -q .; then
-            # Move all .zst files from any subdirectory to x86_64/
-            find pkgs/ -name "*.zst" -type f -exec mv {} x86_64/ \;
-            
-            # Update the repo database
-            cd x86_64/
-            repo-add --new ${{ env.REPO_NAME }}.db.tar.gz *.zst
-            cd ../
-            bash update.sh x86_64
-          else
-            echo "No .zst files found to process"
-            # Still create an empty index.html
-            bash update.sh x86_64
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- x86_64 aarch64 armv7h index.html .nojekyll
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update Arch packages and repository databases'
+            git push origin HEAD:repo
           fi
-      - uses: EndBug/add-and-commit@v9
+      - name: Prepare Pages artifact
+        run: python scripts/sync.py site repository site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
         with:
-          default_author: github_actions
-          new_branch: repo
+          path: site
 
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
