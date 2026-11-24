@@ -66,21 +66,25 @@ The `.db` and `.files` aliases are regular files because Pages artifacts cannot
 contain symlinks. Existing `rexec` packages remain available.
 
 Updates and deployments are serialized. `vercmp` prevents older releases from
-replacing newer packages. An identical rerun does not change the repository;
-changed bytes for the same package version fail with an instruction to bump the
-version. Old archives remain downloadable for clients with cached databases.
+replacing newer packages. When Tsunagi rebuilds the same version, the updater
+compares the archived files, permissions and package metadata. If only the
+packaging order, compression or build timestamps differ, it keeps the published
+archive and its checksum. Changes to the installed files or package metadata
+require a new version. Old archives remain downloadable for clients with cached
+databases.
 
 New tsunagi packages use epoch `1` and the prerelease spelling `0.1.0rc.33`.
 This makes RC → stable upgrades work with pacman and upgrades installations using
 the old `0.1.0_rc.33` spelling. Historical release assets remain importable.
 
 The nightly job and pushes to `main` reconcile the newest complete `tsunagi`
-release (including prereleases) and the latest `rexec` release. This also recovers
-missed dispatches. To retry a particular tag without rebuilding, use **Actions →
-Publish Arch repository → Run workflow**, select `main`, and enter its tag. Leave
-it empty to reconcile both projects. If Pages deployment alone fails, rerun its
-failed job. A release dispatch acknowledges scheduling, not successful deployment;
-check the `arch_repo` workflow for the final publication status.
+release (including prereleases) and the newest stable `rexec` release with an
+Arch package. Releases containing only standalone executables are skipped.
+This also recovers missed dispatches. To retry a particular tag without rebuilding,
+use **Actions → Publish Arch repository → Run workflow**, select `main`, and enter
+its tag. Leave it empty to reconcile both projects. If Pages deployment alone
+fails, rerun its failed job. Check the `arch_repo` workflow for the final
+publication status after a release dispatch.
 
 ## Validation
 

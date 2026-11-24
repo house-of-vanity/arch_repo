@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Import public release packages and publish a pacman repository. Stdlib only."""
 
+import gzip
 import hashlib
 import html
 import json
@@ -10,6 +11,8 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
+import tempfile
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
@@ -33,10 +36,10 @@ def api(path):
 def assets_for(source, release):
     """Require the complete Arch build before importing a tsunagi release."""
     if release.get("draft"):
-        raise ValueError("Draft releases cannot be published")
+        raise ValueError(f"Draft releases cannot be published: {source} {release['tag_name']}")
     assets = [a for a in release["assets"] if a["name"].endswith(".pkg.tar.zst")]
     if not assets:
-        raise ValueError("Release has no Arch packages")
+        raise ValueError(f"Release has no Arch packages: {source} {release['tag_name']}")
     if source == TSUNAGI:
         tag = release["tag_name"]
         if not re.fullmatch(r"v[0-9][A-Za-z0-9.+_-]*", tag):
@@ -57,15 +60,13 @@ def resolve_release(source, tag=None):
         release = api(f"{source}/releases/tags/{quote(tag, safe='')}")
         assets_for(source, release)
         return release
-    if source != TSUNAGI:
-        release = api(f"{source}/releases/latest")
-        assets_for(source, release)
-        return release
-    # /latest excludes prereleases. Search for a completed build instead;
-    # pacman's version comparison below prevents rollback.
+    # Upstreams also publish releases without Arch builds. Include tsunagi
+    # prereleases while keeping rexec on its stable release channel.
     for page in range(1, 101):
         releases = api(f"{source}/releases?per_page=100&page={page}")
         for release in releases:
+            if source != TSUNAGI and release["prerelease"]:
+                continue
             try:
                 assets_for(source, release)
             except ValueError:
@@ -73,7 +74,7 @@ def resolve_release(source, tag=None):
             return release
         if len(releases) < 100:
             break
-    raise ValueError("No complete tsunagi release found")
+    raise ValueError(f"No release with eligible Arch packages found for {source}")
 
 
 def metadata(path):
@@ -99,6 +100,51 @@ def metadata(path):
 def digest(path):
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
+def rebuild_file_contents(archive, member):
+    with archive.extractfile(member) as stream:
+        if member.name == ".PKGINFO":
+            return re.sub(rb"(?m)^builddate = [0-9]+$", b"builddate = 0", stream.read())
+        if member.name != ".MTREE":
+            return hashlib.file_digest(stream, "sha256").digest()
+        manifest = gzip.decompress(stream.read())
+
+    # Only normalize .PKGINFO fields derived from this build's actual bytes.
+    with archive.extractfile(".PKGINFO") as stream:
+        info = stream.read()
+    generated = {
+        f"size={len(info)}".encode(): b"size=<pkginfo>",
+        f"md5digest={hashlib.md5(info, usedforsecurity=False).hexdigest()}".encode(): b"md5digest=<pkginfo>",
+        f"sha256digest={hashlib.sha256(info).hexdigest()}".encode(): b"sha256digest=<pkginfo>",
+    }
+    lines = re.sub(rb"(?m) time=[0-9]+(?:\.[0-9]+)?(?= |$)", b" time=0", manifest).splitlines()
+    for i, line in enumerate(lines):
+        if line.startswith(b"./.PKGINFO "):
+            lines[i] = b" ".join(generated.get(field, field) for field in line.split(b" "))
+    return lines
+
+
+def tsunagi_build_contents(path):
+    """Compare rebuilt packages using their actual files, including install scripts."""
+    entries = {}
+    with tempfile.TemporaryFile() as unpacked:
+        subprocess.run(["zstd", "-dc", "--", str(path)], stdout=unpacked, check=True)
+        unpacked.seek(0)
+        with tarfile.open(fileobj=unpacked, mode="r:") as archive:
+            for member in archive:
+                if member.name in entries:
+                    raise ValueError(f"Duplicate archive entry {member.name!r} in {path}")
+                attrs = member.get_info()
+                # The tar header checksum includes mtime. File contents below
+                # account for size, including generated metadata of varying length.
+                for key in ("mtime", "chksum", "size"):
+                    del attrs[key]
+                attrs["pax"] = {k: v for k, v in member.pax_headers.items()
+                                if k not in {"mtime", "atime", "ctime"}}
+                content = rebuild_file_contents(archive, member) if member.isfile() else None
+                entries[member.name] = (attrs, content)
+    return entries
 
 
 def download(destination):
@@ -189,8 +235,11 @@ def update(repository, incoming):
                 print(f"Skip older {path.name} (published {old_version})")
                 continue
             if order == 0:
-                if digest(path) != digest(old_path):
+                if digest(path) == digest(old_path):
+                    continue
+                if name not in SOURCES[TSUNAGI] or tsunagi_build_contents(path) != tsunagi_build_contents(old_path):
                     raise ValueError(f"Changed bytes for existing version {path.name}; bump the version")
+                print(f"Keep published {path.name} (equivalent rebuild)")
                 continue
         current[key] = (version, path)
         pending[key] = path

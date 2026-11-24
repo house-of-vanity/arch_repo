@@ -1,4 +1,6 @@
 import contextlib
+import gzip
+import hashlib
 import io
 import os
 from pathlib import Path
@@ -47,6 +49,27 @@ class ReleaseSelection(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Incomplete"):
                 sync.resolve_release(sync.TSUNAGI, incomplete["tag_name"])
 
+    def test_rexec_reconciliation_finds_a_stable_arch_package_on_the_next_page(self):
+        source = "house-of-vanity/rexec"
+        binary_only = {"tag_name": "v1.5.2", "prerelease": False,
+                       "assets": [{"name": "rexec_linux-amd64"}]}
+        packaged = {"tag_name": "1.1.0", "prerelease": False,
+                    "assets": [{"name": "rexec-1.1.0-1-x86_64.pkg.tar.zst"}]}
+        first_page = [dict(packaged, prerelease=True), dict(packaged, draft=True)] + [binary_only] * 98
+        with patch.object(sync, "api", side_effect=[first_page, [packaged]]) as api:
+            self.assertEqual(sync.resolve_release(source), packaged)
+        self.assertEqual([call.args[0] for call in api.call_args_list],
+                         [f"{source}/releases?per_page=100&page={i}" for i in (1, 2)])
+
+    def test_rexec_exact_tag_without_packages_reports_source_and_tag(self):
+        source = "house-of-vanity/rexec"
+        binary_only = {"tag_name": "v1.5.2", "prerelease": False,
+                       "assets": [{"name": "rexec_linux-amd64"}]}
+        with patch.object(sync, "api", return_value=binary_only) as api:
+            with self.assertRaisesRegex(ValueError, "no Arch packages.*house-of-vanity/rexec v1.5.2"):
+                sync.resolve_release(source, "v1.5.2")
+        api.assert_called_once_with(f"{source}/releases/tags/v1.5.2")
+
     def test_dispatch_rejects_missing_tag_or_unknown_source_before_network(self):
         for source, tag in [(sync.TSUNAGI, ""), ("someone/else", "v1")]:
             with patch.dict(os.environ, {"EVENT_NAME": "repository_dispatch",
@@ -68,16 +91,22 @@ class RepositoryIntegration(unittest.TestCase):
         self.incoming = self.root / "incoming"
         self.incoming.mkdir()
 
-    def package(self, name="tsunagi", version="0.1.0_rc.10-1", arch="x86_64", payload=b"binary"):
+    def package(self, name="tsunagi", version="0.1.0_rc.10-1", arch="x86_64", payload=b"binary",
+                builddate=1, description="Test package", mode=0o755, pkginfo_digest=None):
         path = self.incoming / f"{name}-{version.split(':', 1)[-1]}-{arch}.pkg.tar.zst"
         data = io.BytesIO()
         with tarfile.open(fileobj=data, mode="w") as archive:
             info = (f"pkgname = {name}\npkgver = {version}\narch = {arch}\n"
-                    "pkgdesc = Test package\nsize = 6\nbuilddate = 1\nlicense = MIT\n").encode()
-            for filename, content in [(".PKGINFO", info), (f"usr/bin/{name}", payload)]:
+                    f"pkgdesc = {description}\nsize = 6\nbuilddate = {builddate}\nlicense = MIT\n").encode()
+            checksum = pkginfo_digest or hashlib.sha256(info).hexdigest()
+            manifest = (f"#mtree\n./.PKGINFO time={builddate} size={len(info)} "
+                        f"sha256digest={checksum}\n").encode()
+            for filename, content in [(".PKGINFO", info), (".MTREE", gzip.compress(manifest, mtime=0)),
+                                      (f"usr/bin/{name}", payload)]:
                 entry = tarfile.TarInfo(filename)
                 entry.size = len(content)
-                entry.mode = 0o755
+                entry.mode = mode if filename.startswith("usr/") else 0o644
+                entry.mtime = builddate
                 archive.addfile(entry, io.BytesIO(content))
         with path.open("wb") as output:
             subprocess.run(["zstd", "-q", "-c"], input=data.getvalue(), stdout=output, check=True)
@@ -153,9 +182,21 @@ class RepositoryIntegration(unittest.TestCase):
         self.package()
         self.update()
         before = self.snapshot()
-        self.package(payload=b"different build")
-        with self.assertRaisesRegex(ValueError, "Changed bytes"):
-            self.update()
+        for changes in ({"payload": b"different build"}, {"description": "Changed metadata"},
+                        {"mode": 0o644}, {"pkginfo_digest": "0" * 64}):
+            with self.subTest(changes=changes):
+                self.package(**changes)
+                with self.assertRaisesRegex(ValueError, "Changed bytes"):
+                    self.update()
+                self.assertEqual(self.snapshot(), before)
+
+    def test_timestamp_only_tsunagi_rebuild_keeps_published_checksums(self):
+        package = self.package(builddate=1)
+        self.update()
+        before = self.snapshot()
+        self.package(builddate=100)
+        self.assertNotEqual(package.read_bytes(), before[f"x86_64/{package.name}"])
+        self.update()
         self.assertEqual(self.snapshot(), before)
 
     def test_legacy_to_epoch_prerelease_to_stable(self):
