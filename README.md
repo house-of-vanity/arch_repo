@@ -1,5 +1,7 @@
 # Arch Linux repository
 
+This repository also publishes the [Hexor WinGet source](winget/README.md) to OpenArtifact.
+
 Packages are hosted by GitHub Pages. Package archives and pacman databases live
 in the `repo` branch; automation lives in `main`.
 
