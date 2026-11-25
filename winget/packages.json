@@ -1,0 +1,20 @@
+{
+  "house-of-vanity/tsunagi": {
+    "PackageIdentifier": "Hexor.Tsunagi",
+    "PackageName": "Tsunagi",
+    "Publisher": "Tsunagi",
+    "PackageLocale": "en-US",
+    "License": "WTFPL",
+    "ShortDescription": "A mesh VPN with no server.",
+    "PackageUrl": "https://github.com/house-of-vanity/tsunagi",
+    "InstallerType": "inno",
+    "Scope": "machine",
+    "Installers": [
+      {
+        "Architecture": "x64",
+        "ProductCode": "{F635E5DD-250D-499F-B0B3-AFC7CC64A15D}_is1",
+        "InstallerUrl": "https://github.com/house-of-vanity/tsunagi/releases/download/{tag}/tsunagi-setup-{version}-x86_64.exe"
+      }
+    ]
+  }
+}
