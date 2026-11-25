@@ -2,7 +2,7 @@ name: Publish WinGet repository
 
 on:
   repository_dispatch:
-    types: [new_package, winget_package]
+    types: [new_package]
   workflow_dispatch:
     inputs:
       repository:
@@ -25,7 +25,10 @@ permissions:
 
 jobs:
   catalog:
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' ||
+      github.event.client_payload.repository == 'house-of-vanity/tsunagi'))
     runs-on: windows-2025
     permissions:
       contents: read
@@ -44,7 +47,14 @@ jobs:
         run: ./winget/build.ps1 "$env:RUNNER_TEMP/winget"
       - name: Sign and verify preview with a disposable certificate
         if: github.event_name == 'pull_request'
-        run: ./winget/sign.ps1 "$env:RUNNER_TEMP/winget" -Preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          signing="$(mktemp -d)/preview"
+          bash winget/create-signing-key.sh "$signing"
+          WINGET_PFX_BASE64="$(openssl base64 -A -in "$signing/hexor-winget.pfx")" \
+            WINGET_PFX_PASSWORD="$(cat "$signing/pfx-password")" \
+            pwsh -NoProfile -File winget/sign.ps1 "$RUNNER_TEMP/winget"
       - name: Sign and verify release
         if: github.event_name != 'pull_request'
         run: ./winget/sign.ps1 "$env:RUNNER_TEMP/winget"
@@ -65,3 +75,6 @@ jobs:
           if (!$source) { $source = Join-Path $env:RUNNER_TEMP 'winget/cache' }
           winget source add --name hexor --type Microsoft.PreIndexed.Package --arg $source --accept-source-agreements
           winget show --source hexor --id $env:PACKAGE --exact --version $env:VERSION --accept-source-agreements
+          if ($env:SOURCE) {
+            winget download --source hexor --id $env:PACKAGE --exact --version $env:VERSION --skip-dependencies --accept-package-agreements --accept-source-agreements --download-directory "$env:RUNNER_TEMP/verify"
+          }

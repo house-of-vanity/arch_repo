@@ -1,22 +1,18 @@
-param([Parameter(Mandatory)][string] $Work, [switch] $Preview)
+param([Parameter(Mandatory)][string] $Work)
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true
 $subject = 'CN=Hexor WinGet'
-if ($Preview) {
-    $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject $subject -CertStoreLocation Cert:\CurrentUser\My
-} else {
-    if (!$env:WINGET_PFX_BASE64 -or !$env:WINGET_PFX_PASSWORD) {
-        throw 'Set WINGET_PFX_BASE64 and WINGET_PFX_PASSWORD in arch_repo Actions secrets, then rerun this workflow.'
-    }
-    $pfx = Join-Path $Work 'signer.pfx'
-    try {
-        [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINGET_PFX_BASE64))
-        $password = ConvertTo-SecureString $env:WINGET_PFX_PASSWORD -AsPlainText -Force
-        $cert = Import-PfxCertificate -FilePath $pfx -Password $password -CertStoreLocation Cert:\CurrentUser\My |
-            Where-Object HasPrivateKey | Select-Object -First 1
-    } finally {
-        if (Test-Path $pfx) { Remove-Item $pfx }
-    }
+if (!$env:WINGET_PFX_BASE64 -or !$env:WINGET_PFX_PASSWORD) {
+    throw 'Set WINGET_PFX_BASE64 and WINGET_PFX_PASSWORD in arch_repo Actions secrets, then rerun this workflow.'
+}
+$pfx = Join-Path $Work 'signer.pfx'
+try {
+    [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINGET_PFX_BASE64))
+    $password = ConvertTo-SecureString $env:WINGET_PFX_PASSWORD -AsPlainText -Force
+    $cert = Import-PfxCertificate -FilePath $pfx -Password $password -CertStoreLocation Cert:\CurrentUser\My |
+        Where-Object HasPrivateKey | Select-Object -First 1
+} finally {
+    if (Test-Path $pfx) { Remove-Item $pfx }
 }
 if ($cert.Subject -cne $subject) { throw "The source signing certificate must have subject $subject" }
 $public = Join-Path $Work 'hexor-winget.cer'

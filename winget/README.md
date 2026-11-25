@@ -30,15 +30,16 @@ winget upgrade --source hexor --id Hexor.Tsunagi --exact
 
 ## Publish from another CI
 
-Register the project once in `winget/packages.json` with its standard WinGet fields and one HTTPS installer URL template per architecture. Use `{tag}` for the build tag and `{version}` for the version after removing a leading `v`. The Tsunagi entry is a working example. Any CI that serves built installers at those URLs can send the same HTTP request. Use a fine-grained GitHub token scoped to `house-of-vanity/arch_repo` with Contents read/write. Send the event after all release assets are downloadable.
+Register the project once in `winget/packages.json` with its standard WinGet fields and one HTTPS installer URL template per architecture. Use `{tag}` for the build tag and `{version}` for the version after removing a leading `v`. The Tsunagi entry is a working example. Any CI that serves built installers at those URLs can send the same HTTP request. Give it a fine-grained GitHub token scoped to `house-of-vanity/arch_repo` with **Actions: write**. Send the event after all release assets are downloadable.
 
 ```sh
 curl --fail-with-body -X POST \
   -H "Authorization: Bearer $DISPATCH_TOKEN" \
-  --json '{"event_type":"winget_package","client_payload":{"repository":"house-of-vanity/tsunagi","tag":"v1.0.3"}}' \
-  https://api.github.com/repos/house-of-vanity/arch_repo/dispatches
+  -H 'X-GitHub-Api-Version: 2026-03-10' \
+  --json '{"ref":"main","inputs":{"repository":"house-of-vanity/tsunagi","tag":"v1.0.3"}}' \
+  https://api.github.com/repos/house-of-vanity/arch_repo/actions/workflows/publish-winget.yml/dispatches
 ```
 
-HTTP 204 acknowledges the event. **Actions → Publish WinGet repository** reports publication and verifies the exact version using the Windows client. You can retry a tag there without rebuilding the installer. The catalog mirrors each installer by SHA-256, retains prior versions, and rejects different bytes under a published version. One serialized publisher uploads manifests and WinGet v2 metadata before switching the signed indexes. The OpenArtifact raw repository must allow replacing `source.msix` and `source2.msix` at their fixed URLs.
+The response contains a run ID and link. **Actions → Publish WinGet repository** reports publication and verifies the exact version using the Windows client. You can retry a tag there without rebuilding the installer. The catalog mirrors each installer by SHA-256, retains prior versions, and rejects different bytes under a published version. One serialized publisher uploads manifests and WinGet v2 metadata before switching the signed indexes. The OpenArtifact raw repository must allow replacing `source.msix` and `source2.msix` at their fixed URLs. [GitHub workflow dispatch API](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event)
 
 The publisher uses Python's standard library, PowerShell and the Windows SDK on a GitHub-hosted Windows runner. The Microsoft index generator comes from a SHA-256-pinned build of winget-cli. [Index generator source](https://github.com/microsoft/winget-cli/blob/v1.29.240/src/WinGetSourceCreator/WinGetLocalSource.cs) · [Pinned tool release](https://github.com/pl4nty/winget-pkgs-selfhost/releases/tag/v1.29.240)
