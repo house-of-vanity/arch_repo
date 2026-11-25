@@ -1,6 +1,7 @@
 # Arch Linux repository
 
 This repository also publishes the [Hexor WinGet source](winget/README.md) to OpenArtifact.
+Windows users can [add the source with one PowerShell command](#windows-setup-with-winget).
 
 Packages are hosted by GitHub Pages. Package archives and pacman databases live
 in the `repo` branch; automation lives in `main`.
@@ -25,6 +26,18 @@ sudo pacman -Syu tsunagi-gui
 replaces/conflicts with the headless package. Existing users receive upgrades
 with `sudo pacman -Syu`. Packages currently retain the repository's existing
 unsigned-package policy.
+
+## Windows setup with WinGet
+
+After the first WinGet release, open **PowerShell as Administrator** on a PC with
+WinGet installed and paste this line. It downloads the public certificate from
+OpenArtifact, checks its SHA-256 before trusting it, and adds the `hexor` source.
+
+```powershell
+& { $ErrorActionPreference='Stop'; $repo='https://repo.hexor.cy/repos/raw/hexor-winget'; $cert=Join-Path $env:TEMP "hexor-$(New-Guid).cer"; Invoke-WebRequest "$repo/hexor-winget.cer" -UseBasicParsing -OutFile $cert; if ((Get-FileHash $cert -Algorithm SHA256).Hash -ne 'ece00f44476bc6500bc502777109d0ace977f2607b3e9e8cff90037ad8d28071') { throw 'SHA-256 сертификата Hexor не совпал' }; Import-Certificate -FilePath $cert -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null; Remove-Item $cert; winget source add --name hexor --arg $repo --type Microsoft.PreIndexed.Package --accept-source-agreements }
+```
+
+Run `winget source list --name hexor` to confirm the source was added.
 
 ## GitHub setup
 
